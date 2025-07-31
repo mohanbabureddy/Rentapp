@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 function TenantBills({ username }) {
   const [bills, setBills] = useState([]);
 
-  const fetchBills = async () => {
+  const fetchBills = useCallback(async () => {
     try {
       const response = await fetch(`http://localhost:8080/api/tenants/${username}`);
       if (!response.ok) {
@@ -14,18 +14,17 @@ function TenantBills({ username }) {
     } catch (error) {
       console.error("Error fetching bills:", error);
     }
-  };
+  }, [username]);
 
   useEffect(() => {
     fetchBills();
-  }, [username]);
+  }, [fetchBills]);
 
   const payNow = (bill) => {
-    const totalAmount = (
-      Number(bill.rent || 0) +
-      Number(bill.water || 0) +
-      Number(bill.electricity || 0)
-    ) * 100;
+    const totalAmount =
+      (Number(bill.rent || 0) +
+        Number(bill.water || 0) +
+        Number(bill.electricity || 0)) * 100;
 
     const options = {
       key: "rzp_test_83AfjhlCGpYRkn",
@@ -34,29 +33,27 @@ function TenantBills({ username }) {
       name: "Tenant Rent Billing",
       description: `Payment for ${bill.monthYear}`,
       handler: async function (response) {
-  alert(`✅ Payment successful!\nPayment ID: ${response.razorpay_payment_id}`);
+        alert(`✅ Payment successful!\nPayment ID: ${response.razorpay_payment_id}`);
 
-  try {
-    await fetch(`http://localhost:8080/api/tenants/markPaid/${bill.id}`, {
-      method: 'PUT'
-    });
+        try {
+          await fetch(`http://localhost:8080/api/tenants/markPaid/${bill.id}`, {
+            method: 'PUT'
+          });
 
-    await fetch('http://localhost:8080/api/tenants/logSuccess', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tenantName: username,
-        paymentId: response.razorpay_payment_id
-      })
-    });
+          await fetch('http://localhost:8080/api/tenants/logSuccess', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tenantName: username,
+              paymentId: response.razorpay_payment_id
+            })
+          });
 
-    // ✅ Re-fetch updated bill status
-    fetchBills();
-  } catch (err) {
-    console.error("Error after payment success:", err);
-  }
-},
-
+          fetchBills(); // Refresh bill data
+        } catch (err) {
+          console.error("Error after payment success:", err);
+        }
+      },
       prefill: {
         name: username,
         email: '',
@@ -105,7 +102,11 @@ function TenantBills({ username }) {
                 <td>{bill.rent}</td>
                 <td>{bill.water}</td>
                 <td>{bill.electricity}</td>
-                <td>{Number(bill.rent || 0) + Number(bill.water || 0) + Number(bill.electricity || 0)}</td>
+                <td>
+                  {Number(bill.rent || 0) +
+                    Number(bill.water || 0) +
+                    Number(bill.electricity || 0)}
+                </td>
                 <td>
                   {bill.paid ? (
                     <span style={{ color: 'green' }}>✅ Paid</span>
