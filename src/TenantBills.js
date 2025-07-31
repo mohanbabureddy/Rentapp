@@ -33,22 +33,30 @@ function TenantBills({ username }) {
       currency: "INR",
       name: "Tenant Rent Billing",
       description: `Payment for ${bill.monthYear}`,
-      handler: function (response) {
-        alert(`✅ Payment successful!\nPayment ID: ${response.razorpay_payment_id}`);
+      handler: async function (response) {
+  alert(`✅ Payment successful!\nPayment ID: ${response.razorpay_payment_id}`);
 
-        fetch(`http://localhost:8080/api/tenants/markPaid/${bill.id}`, {
-          method: 'PUT'
-        });
+  try {
+    await fetch(`http://localhost:8080/api/tenants/markPaid/${bill.id}`, {
+      method: 'PUT'
+    });
 
-        fetch('http://localhost:8080/api/tenants/logSuccess', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tenantName: username,
-            paymentId: response.razorpay_payment_id
-          })
-        });
-      },
+    await fetch('http://localhost:8080/api/tenants/logSuccess', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantName: username,
+        paymentId: response.razorpay_payment_id
+      })
+    });
+
+    // ✅ Re-fetch updated bill status
+    fetchBills();
+  } catch (err) {
+    console.error("Error after payment success:", err);
+  }
+},
+
       prefill: {
         name: username,
         email: '',

@@ -1,43 +1,35 @@
 pipeline {
-    agent any
+  agent any
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/mohanbabureddy/rentapp-frontend.git'
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh 'npm install'
-                sh 'npm run build'
-            }
-        }
-
-        stage('Docker Build & Push') {
-            steps {
-                script {
-                    dockerImage = docker.build("mohanbabureddy/rentapp-frontend")
-                    docker.withRegistry('', 'docker-hub-credentials') {
-                        dockerImage.push("latest")
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to AWS EC2') {
-            steps {
-                sshagent(['ec2-ssh-key']) {
-                    sh '''
-                    ssh ec2-user@<EC2-IP> '
-                    docker stop rentapp-frontend || true && docker rm rentapp-frontend || true
-                    docker pull mohanbabureddy/rentapp-frontend:latest
-                    docker run -d --name rentapp-frontend -p 80:80 mohanbabureddy/rentapp-frontend
-                    '
-                    '''
-                }
-            }
-        }
+  stages {
+    stage('Clone Repo') {
+      steps {
+        git 'https://github.com/mohanbabureddy/Rentapp.git'
+      }
     }
+
+    stage('Install Dependencies') {
+      steps {
+        sh 'npm install'
+      }
+    }
+
+    stage('Build') {
+      steps {
+        sh 'npm run build'
+      }
+    }
+
+    stage('Dockerize') {
+      steps {
+        sh 'docker build -t rentapp-frontend .'
+      }
+    }
+
+    stage('Deploy (optional)') {
+      steps {
+        echo "Deploy the container using docker run or push to a registry"
+      }
+    }
+  }
 }
