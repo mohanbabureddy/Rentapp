@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import TenantBills from './TenantBills';
 import AdminAddBill from './AdminAddBill';
@@ -7,13 +7,63 @@ import AdminViewBills from './AdminViewBills';
 import Login from './Login';
 
 function App() {
-  const [user, setUser] = useState(null); // 👈 holds { username, role }
+  const [user, setUser] = useState(null);
+  const timerRef = useRef(null);
+
+  // Load user from localStorage on app start
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    clearTimeout(timerRef.current);
+  };
+
+  // Inactivity auto-logout logic
+  useEffect(() => {
+    if (!user) return;
+
+    const logoutAfterInactivity = () => {
+      handleLogout();
+      alert('You have been logged out due to inactivity.');
+    };
+
+    const resetTimer = () => {
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(logoutAfterInactivity, 5 * 60 * 1000); // 5 minutes
+    };
+
+    // List of events that indicate activity
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+
+    events.forEach(event =>
+      window.addEventListener(event, resetTimer)
+    );
+
+    resetTimer(); // Start timer on mount
+
+    return () => {
+      clearTimeout(timerRef.current);
+      events.forEach(event =>
+        window.removeEventListener(event, resetTimer)
+      );
+    };
+  }, [user]);
 
   return (
     <Router>
       {!user ? (
         <Routes>
-          <Route path="*" element={<Login setUser={setUser} />} />
+          <Route path="*" element={<Login setUser={(u) => {
+            setUser(u);
+            localStorage.setItem('user', JSON.stringify(u)); // persist on login
+          }} />} />
         </Routes>
       ) : (
         <div
@@ -50,7 +100,7 @@ function App() {
                   fontWeight: 'bold',
                   cursor: 'pointer',
                 }}
-                onClick={() => setUser(null)}
+                onClick={handleLogout}
               >
                 Logout
               </button>
@@ -66,63 +116,14 @@ function App() {
               textAlign: 'center',
             }}
           >
-            {user.role === "ADMIN" && (
+            {user.role === "ADMIN" ? (
               <>
-                <Link
-                  to="/admin/add-bill"
-                  style={{
-                    color: '#fff',
-                    textDecoration: 'none',
-                    fontWeight: 'bold',
-                    margin: '0 18px',
-                    fontSize: '16px',
-                    letterSpacing: '1px',
-                  }}
-                >
-                  Add Bill
-                </Link>
-                <Link
-                  to="/admin/view-bills"
-                  style={{
-                    color: '#fff',
-                    textDecoration: 'none',
-                    fontWeight: 'bold',
-                    margin: '0 18px',
-                    fontSize: '16px',
-                    letterSpacing: '1px',
-                  }}
-                >
-                  View Bills
-                </Link>
-                <Link
-                  to="/admin/users"
-                  style={{
-                    color: '#fff',
-                    textDecoration: 'none',
-                    fontWeight: 'bold',
-                    margin: '0 18px',
-                    fontSize: '16px',
-                    letterSpacing: '1px',
-                  }}
-                >
-                  Manage Users
-                </Link>
+                <Link to="/admin/add-bill" style={navLinkStyle}>Add Bill</Link>
+                <Link to="/admin/view-bills" style={navLinkStyle}>View Bills</Link>
+                <Link to="/admin/users" style={navLinkStyle}>Manage Users</Link>
               </>
-            )}
-            {user.role !== "ADMIN" && (
-              <Link
-                to="/"
-                style={{
-                  color: '#fff',
-                  textDecoration: 'none',
-                  fontWeight: 'bold',
-                  margin: '0 18px',
-                  fontSize: '16px',
-                  letterSpacing: '1px',
-                }}
-              >
-                My Bills
-              </Link>
+            ) : (
+              <Link to="/" style={navLinkStyle}>My Bills</Link>
             )}
           </nav>
 
@@ -142,5 +143,14 @@ function App() {
   );
 }
 
-export default App;
+// Reusable link style
+const navLinkStyle = {
+  color: '#fff',
+  textDecoration: 'none',
+  fontWeight: 'bold',
+  margin: '0 18px',
+  fontSize: '16px',
+  letterSpacing: '1px',
+};
 
+export default App;

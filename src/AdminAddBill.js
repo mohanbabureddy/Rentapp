@@ -33,7 +33,7 @@ const AdminAddBill = () => {
   const [tenants, setTenants] = useState([]);
 
   useEffect(() => {
-    fetch('http://vgrpay.uk/api/users/names')
+    fetch('http://localhost:8080/api/users/names')
       .then(res => res.json())
       .then(data => setTenants(data))
       .catch(err => console.error('Failed to fetch tenants', err));
