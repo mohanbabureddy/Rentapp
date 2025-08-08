@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 
 const API_BASE = 'http://localhost:8080/api/users';
 
+const ROLES = ['ADMIN', 'TENANT'];
+
 const styles = {
   container: {
     maxWidth: '900px',
@@ -66,16 +68,62 @@ const styles = {
     cursor: 'pointer',
     marginRight: '6px',
   },
+  actionsCol: {
+    width: '180px',
+    minWidth: '180px',
+    maxWidth: '180px',
+  },
+  usernameCol: {
+    width: '180px',
+    minWidth: '180px',
+    maxWidth: '180px',
+  },
+  searchBar: {
+    marginBottom: '18px',
+    padding: '8px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    fontSize: '15px',
+    width: '220px',
+  },
+  pagination: {
+    marginTop: '18px',
+    textAlign: 'center',
+  },
+  exportBtn: {
+    marginLeft: '12px',
+    padding: '7px 16px',
+    borderRadius: '6px',
+    background: '#38bdf8',
+    color: '#fff',
+    border: 'none',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+  }
 };
 
 function AdminUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
-  const [newUser, setNewUser] = useState({ username: '', password: '', role: '' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: ROLES[0] });
   const [editId, setEditId] = useState(null);
-  const [editUser, setEditUser] = useState({ username: '', password: '', role: '' });
+  const [editUser, setEditUser] = useState({ username: '', password: '', role: ROLES[0] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+  const filteredUsers = users.filter(
+    u =>
+      u.username.toLowerCase().includes(search.toLowerCase()) ||
+      u.role.toLowerCase().includes(search.toLowerCase())
+  );
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const pagedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
 
   // Auth guard: must be ADMIN
   useEffect(() => {
@@ -122,7 +170,7 @@ function AdminUsers() {
         body: JSON.stringify(newUser),
       });
       if (!res.ok) throw new Error('Add failed');
-      setNewUser({ username: '', password: '', role: '' });
+      setNewUser({ username: '', password: '', role: ROLES[0] });
       await fetchUsers();
     } catch (err) {
       console.error(err);
@@ -135,6 +183,7 @@ function AdminUsers() {
   const handleEdit = user => {
     setEditId(user.id);
     setEditUser({ username: user.username, password: user.password, role: user.role });
+    setShowEditPassword(false);
   };
 
   const handleEditChange = e => {
@@ -178,6 +227,22 @@ function AdminUsers() {
     }
   };
 
+  // Export users as CSV
+  const handleExportCSV = () => {
+    const csvRows = [
+      ['ID', 'Username', 'Role'],
+      ...users.map(u => [u.id, u.username, u.role])
+    ];
+    const csvContent = csvRows.map(e => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>User Management</h2>
@@ -194,23 +259,41 @@ function AdminUsers() {
         />
         <input
           name="password"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           placeholder="Password"
           value={newUser.password}
           onChange={handleAddChange}
           style={styles.input}
         />
-        <input
+        <button
+          type="button"
+          onClick={() => setShowPassword(v => !v)}
+          style={{ ...styles.actionBtn, background: '#f1f5f9', color: '#2563eb', border: '1px solid #2563eb' }}
+        >
+          {showPassword ? 'Hide' : 'Show'}
+        </button>
+        <select
           name="role"
-          placeholder="Role"
           value={newUser.role}
           onChange={handleAddChange}
           style={styles.input}
-        />
+        >
+          {ROLES.map(role => (
+            <option key={role} value={role}>{role}</option>
+          ))}
+        </select>
         <button disabled={loading} onClick={handleAddUser} style={styles.btnPrimary}>
           {loading ? 'Please wait…' : 'Add'}
         </button>
+        <button onClick={handleExportCSV} style={styles.exportBtn}>Export CSV</button>
       </div>
+
+      <input
+        style={styles.searchBar}
+        placeholder="Search by username or role"
+        value={search}
+        onChange={e => { setSearch(e.target.value); setPage(1); }}
+      />
 
       {loading && <p style={{ textAlign: 'center' }}>Loading...</p>}
 
@@ -219,14 +302,14 @@ function AdminUsers() {
         <thead>
           <tr>
             <th style={styles.th}>ID</th>
-            <th style={styles.th}>Username</th>
+            <th style={{ ...styles.th, ...styles.usernameCol }}>Username</th>
             <th style={styles.th}>Password</th>
             <th style={styles.th}>Role</th>
-            <th style={styles.th}>Actions</th>
+            <th style={{ ...styles.th, ...styles.actionsCol }}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((u, idx) => (
+          {pagedUsers.map((u, idx) => (
             <tr
               key={u.id}
               style={{
@@ -236,7 +319,7 @@ function AdminUsers() {
             >
               <td style={styles.td}>{u.id}</td>
 
-              <td style={styles.td}>
+              <td style={{ ...styles.td, ...styles.usernameCol }}>
                 {editId === u.id ? (
                   <input
                     name="username"
@@ -251,13 +334,28 @@ function AdminUsers() {
 
               <td style={styles.td}>
                 {editId === u.id ? (
-                  <input
-                    name="password"
-                    type="password"
-                    value={editUser.password}
-                    onChange={handleEditChange}
-                    style={styles.input}
-                  />
+                  <>
+                    <input
+                      name="password"
+                      type={showEditPassword ? 'text' : 'password'}
+                      value={editUser.password}
+                      onChange={handleEditChange}
+                      style={styles.input}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword(v => !v)}
+                      style={{
+                        ...styles.actionBtn,
+                        background: '#f1f5f9',
+                        color: '#2563eb',
+                        border: '1px solid #2563eb',
+                        marginRight: 0,
+                      }}
+                    >
+                      {showEditPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </>
                 ) : (
                   '••••••••'
                 )}
@@ -265,18 +363,22 @@ function AdminUsers() {
 
               <td style={styles.td}>
                 {editId === u.id ? (
-                  <input
+                  <select
                     name="role"
                     value={editUser.role}
                     onChange={handleEditChange}
                     style={styles.input}
-                  />
+                  >
+                    {ROLES.map(role => (
+                      <option key={role} value={role}>{role}</option>
+                    ))}
+                  </select>
                 ) : (
                   u.role
                 )}
               </td>
 
-              <td style={styles.td}>
+              <td style={{ ...styles.td, ...styles.actionsCol }}>
                 {editId === u.id ? (
                   <>
                     <button
@@ -318,6 +420,25 @@ function AdminUsers() {
           ))}
         </tbody>
       </table>
+
+      {/* Pagination */}
+      <div style={styles.pagination}>
+        {Array.from({ length: totalPages }, (_, i) => (
+          <button
+            key={i + 1}
+            onClick={() => setPage(i + 1)}
+            style={{
+              ...styles.actionBtn,
+              background: page === i + 1 ? '#2563eb' : '#f1f5f9',
+              color: page === i + 1 ? '#fff' : '#2563eb',
+              border: '1px solid #2563eb',
+              marginRight: 4,
+            }}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

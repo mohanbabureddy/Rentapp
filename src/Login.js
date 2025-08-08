@@ -4,99 +4,96 @@ import { useNavigate } from 'react-router-dom';
 function Login({ setUser }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    const res = await fetch('http://localhost:8080/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      setUser(data); // store in React state
-      localStorage.setItem('user', JSON.stringify(data)); // persist in localStorage
-
-      if (data.role === 'ADMIN') {
-        navigate('/admin/view-bills');
-      } else {
-        navigate('/');
+    setError('');
+    try {
+      const res = await fetch('http://localhost:8080/api/users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const raw = await res.text();
+      let data; try { data = raw ? JSON.parse(raw) : {}; } catch { data = { error: raw }; }
+      if (!res.ok) {
+        if (data.error === 'Registration incomplete') {
+          setError('Registration incomplete. Click Register.');
+          return;
+        }
+        throw new Error(data.error || 'Login failed');
       }
-    } else {
-      alert('❌ Invalid credentials');
-    }
+      if (!data.role) data.role = 'TENANT';
+      setUser(data);
+      localStorage.setItem('user', JSON.stringify(data));
+      if (data.role === 'ADMIN') navigate('/admin/view-bills'); else navigate('/');
+    } catch (e) { setError(e.message); }
+  };
+
+  const box = {
+    maxWidth: '400px',
+    margin: '80px auto',
+    padding: '40px 34px',
+    background: '#f8fafc',
+    borderRadius: '18px',
+    boxShadow: '0 6px 28px rgba(0,0,0,0.12)',
+    textAlign: 'center'
+  };
+  const input = {
+    width: '100%',
+    padding: '14px',
+    marginBottom: '18px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '8px',
+    fontSize: '16px',
+    background: '#fff'
+  };
+  const mainBtn = {
+    width: '100%',
+    padding: '14px',
+    background: 'linear-gradient(90deg,#2563eb 0%,#38bdf8 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontWeight: 'bold',
+    fontSize: '17px',
+    letterSpacing: '0.5px',
+    cursor: 'pointer'
+  };
+  const secondaryBtnBase = {
+    flex: 1,
+    padding: '12px',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '14px',
+    cursor: 'pointer',
+    border: 'none'
+  };
+  const registerBtn = {
+    ...secondaryBtnBase,
+    background: 'linear-gradient(90deg,#10b981,#34d399)',
+    color: '#fff',
+    marginRight: '10px'
+  };
+  const forgotBtn = {
+    ...secondaryBtnBase,
+    background: 'linear-gradient(90deg,#f59e0b,#fbbf24)',
+    color: '#fff'
   };
 
   return (
-    <div
-      style={{
-        maxWidth: '350px',
-        margin: '80px auto',
-        padding: '36px 28px',
-        background: '#f8fafc',
-        borderRadius: '16px',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
-        textAlign: 'center',
-      }}
-    >
-      <h2
-        style={{
-          color: '#2563eb',
-          marginBottom: '28px',
-          letterSpacing: '1px',
-          fontWeight: 'bold',
-        }}
-      >
-        Login
-      </h2>
-      <input
-        placeholder="Username"
-        value={username}
-        onChange={e => setUsername(e.target.value)}
-        style={{
-          width: '100%',
-          padding: '12px',
-          marginBottom: '16px',
-          border: '1px solid #cbd5e1',
-          borderRadius: '6px',
-          fontSize: '16px',
-          background: '#fff',
-        }}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        style={{
-          width: '100%',
-          padding: '12px',
-          marginBottom: '24px',
-          border: '1px solid #cbd5e1',
-          borderRadius: '6px',
-          fontSize: '16px',
-          background: '#fff',
-        }}
-      />
-      <button
-        onClick={handleLogin}
-        style={{
-          width: '100%',
-          padding: '12px',
-          background: 'linear-gradient(90deg, #2563eb 0%, #38bdf8 100%)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '6px',
-          fontWeight: 'bold',
-          fontSize: '17px',
-          letterSpacing: '1px',
-          cursor: 'pointer',
-          transition: 'background 0.2s',
-        }}
-      >
-        Login
-      </button>
+    <div style={box}>
+      <h2 style={{ color: '#2563eb', marginBottom: '30px', letterSpacing: '1px', fontWeight: 'bold' }}>Login</h2>
+      {error && <div style={{ color: 'red', marginBottom: 14, fontSize: 14 }}>{error}</div>}
+      <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} style={input} />
+      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={input} />
+      <button onClick={handleLogin} style={mainBtn}>Login</button>
+
+      <div style={{ display: 'flex', gap: '0', marginTop: '24px' }}>
+        <button onClick={() => navigate('/register')} style={registerBtn}>Register</button>
+        <button onClick={() => navigate('/forgot')} style={forgotBtn}>Forgot Password</button>
+      </div>
     </div>
   );
 }

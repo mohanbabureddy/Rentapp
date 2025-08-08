@@ -31,6 +31,8 @@ const AdminAddBill = () => {
   });
 
   const [tenants, setTenants] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch('http://localhost:8080/api/users/names')
@@ -45,19 +47,39 @@ const AdminAddBill = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await fetch('http://localhost:8080/api/tenants/addBill', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    alert('Bill added!');
-    setFormData({
-      tenantName: '',
-      monthYear: recentMonths[1],
-      rent: '',
-      water: '',
-      electricity: '',
-    });
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('http://localhost:8080/api/tenants/addBill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        // Try to read error message from backend
+        let msg = 'Failed to add bill';
+        try {
+          const data = await res.json();
+          if (data && data.error) msg = data.error;
+        } catch {}
+        throw new Error(msg);
+      }
+
+      setFormData({
+        tenantName: '',
+        monthYear: recentMonths[1],
+        rent: '',
+        water: '',
+        electricity: '',
+      });
+      alert('Bill added and email sent!');
+    } catch (err) {
+      setError(err.message || 'Error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,6 +97,18 @@ const AdminAddBill = () => {
         Add Bill
       </h2>
       <form onSubmit={handleSubmit}>
+        {/* Show loading message */}
+        {loading && (
+          <div style={{ color: '#2563eb', marginBottom: '12px', textAlign: 'center' }}>
+            Adding bill...
+          </div>
+        )}
+        {/* Show error message */}
+        {error && (
+          <div style={{ color: 'red', marginBottom: '12px', textAlign: 'center' }}>
+            {error}
+          </div>
+        )}
         <select
           name="tenantName"
           value={formData.tenantName}
@@ -173,6 +207,7 @@ const AdminAddBill = () => {
         />
         <button
           type="submit"
+          disabled={loading}
           style={{
             width: '100%',
             padding: '12px',
@@ -183,11 +218,12 @@ const AdminAddBill = () => {
             fontWeight: 'bold',
             fontSize: '17px',
             letterSpacing: '1px',
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
             transition: 'background 0.2s',
+            opacity: loading ? 0.6 : 1,
           }}
         >
-          Add Bill
+          {loading ? 'Adding...' : 'Add Bill'}
         </button>
       </form>
     </div>

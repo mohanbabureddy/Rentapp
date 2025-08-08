@@ -5,6 +5,8 @@ import AdminAddBill from './AdminAddBill';
 import AdminUsers from './AdminUsers';
 import AdminViewBills from './AdminViewBills';
 import Login from './Login';
+import Registration from './Registration';
+import ForgotReset from './ForgotReset';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -60,10 +62,11 @@ function App() {
     <Router>
       {!user ? (
         <Routes>
-          <Route path="*" element={<Login setUser={(u) => {
-            setUser(u);
-            localStorage.setItem('user', JSON.stringify(u)); // persist on login
-          }} />} />
+          <Route path="/register" element={<Registration />} />
+          <Route path="/forgot" element={<ForgotReset />} />
+          <Route path="*" element={
+            <Login setUser={(u)=>{ setUser(u); localStorage.setItem('user',JSON.stringify(u)); }} />
+          } />
         </Routes>
       ) : (
         <div
