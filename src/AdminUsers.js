@@ -66,6 +66,11 @@ const styles = {
     cursor: 'pointer',
     marginRight: '6px',
   },
+  actionsCol: {
+    width: '180px',
+    minWidth: '180px',
+    maxWidth: '180px',
+  },
 };
 
 function AdminUsers() {
@@ -222,7 +227,7 @@ function AdminUsers() {
             <th style={styles.th}>Username</th>
             <th style={styles.th}>Password</th>
             <th style={styles.th}>Role</th>
-            <th style={styles.th}>Actions</th>
+            <th style={{ ...styles.th, ...styles.actionsCol }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -276,7 +281,7 @@ function AdminUsers() {
                 )}
               </td>
 
-              <td style={styles.td}>
+              <td style={{ ...styles.td, ...styles.actionsCol }}>
                 {editId === u.id ? (
                   <>
                     <button
