@@ -181,9 +181,9 @@ function AdminUsers() {
   };
 
   const handleEdit = user => {
-    // Do not pre-fill password (backend usually doesn't return it); empty means "unchanged".
+    // Keep original password (if provided by backend) in a hidden field so we can send it if API requires it.
     setEditId(user.id);
-    setEditUser({ username: user.username || '', password: '', role: user.role || ROLES[0] });
+    setEditUser({ username: user.username || '', password: '', role: user.role || ROLES[0], _originalPassword: user.password });
     setShowEditPassword(false);
   };
 
@@ -199,6 +199,9 @@ function AdminUsers() {
     const payload = { username: editUser.username, role: editUser.role };
     if (editUser.password && editUser.password.trim() !== '') {
       payload.password = editUser.password.trim();
+    } else if (editUser._originalPassword) {
+      // Fallback: include original password to satisfy APIs that require password on update.
+      payload.password = editUser._originalPassword;
     }
     setLoading(true);
     try {
@@ -211,7 +214,7 @@ function AdminUsers() {
         let msg = `Update failed (status ${res.status})`;
         try {
           const text = await res.text();
-            if (text) msg += `: ${text.substring(0,300)}`;
+          if (text) msg += `\nServer: ${text.substring(0,500)}`;
         } catch(_) { /* ignore */ }
         throw new Error(msg);
       }
@@ -219,7 +222,7 @@ function AdminUsers() {
       await fetchUsers();
     } catch (err) {
       console.error('Error updating user:', err);
-      alert(err.message || 'Error updating user');
+  alert(err && err.message ? err.message : 'Error updating user');
     } finally {
       setLoading(false);
     }
