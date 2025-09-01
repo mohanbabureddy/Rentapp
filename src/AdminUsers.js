@@ -181,8 +181,9 @@ function AdminUsers() {
   };
 
   const handleEdit = user => {
+    // Do not pre-fill password (backend usually doesn't return it); empty means "unchanged".
     setEditId(user.id);
-    setEditUser({ username: user.username, password: user.password, role: user.role });
+    setEditUser({ username: user.username || '', password: '', role: user.role || ROLES[0] });
     setShowEditPassword(false);
   };
 
@@ -191,22 +192,34 @@ function AdminUsers() {
   };
 
   const handleUpdateUser = async () => {
-    if (!editUser.username || !editUser.password || !editUser.role) {
-      return alert('All fields are required to update');
+    if (!editUser.username || !editUser.role) {
+      return alert('Username and role are required');
+    }
+    // Build payload: include password only if user entered something.
+    const payload = { username: editUser.username, role: editUser.role };
+    if (editUser.password && editUser.password.trim() !== '') {
+      payload.password = editUser.password.trim();
     }
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/update/${editId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editUser),
+        body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Update failed');
+      if (!res.ok) {
+        let msg = `Update failed (status ${res.status})`;
+        try {
+          const text = await res.text();
+            if (text) msg += `: ${text.substring(0,300)}`;
+        } catch(_) { /* ignore */ }
+        throw new Error(msg);
+      }
       setEditId(null);
       await fetchUsers();
     } catch (err) {
-      console.error(err);
-      alert('Error updating user');
+      console.error('Error updating user:', err);
+      alert(err.message || 'Error updating user');
     } finally {
       setLoading(false);
     }
