@@ -181,9 +181,8 @@ function AdminUsers() {
   };
 
   const handleEdit = user => {
-    // Keep original password (if provided by backend) in a hidden field so we can send it if API requires it.
     setEditId(user.id);
-    setEditUser({ username: user.username || '', password: '', role: user.role || ROLES[0], _originalPassword: user.password });
+    setEditUser({ username: user.username, password: user.password, role: user.role });
     setShowEditPassword(false);
   };
 
@@ -192,37 +191,22 @@ function AdminUsers() {
   };
 
   const handleUpdateUser = async () => {
-    if (!editUser.username || !editUser.role) {
-      return alert('Username and role are required');
-    }
-    // Build payload: include password only if user entered something.
-    const payload = { username: editUser.username, role: editUser.role };
-    if (editUser.password && editUser.password.trim() !== '') {
-      payload.password = editUser.password.trim();
-    } else if (editUser._originalPassword) {
-      // Fallback: include original password to satisfy APIs that require password on update.
-      payload.password = editUser._originalPassword;
+    if (!editUser.username || !editUser.password || !editUser.role) {
+      return alert('All fields are required to update');
     }
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/update/${editId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(editUser),
       });
-      if (!res.ok) {
-        let msg = `Update failed (status ${res.status})`;
-        try {
-          const text = await res.text();
-          if (text) msg += `\nServer: ${text.substring(0,500)}`;
-        } catch(_) { /* ignore */ }
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error('Update failed');
       setEditId(null);
       await fetchUsers();
     } catch (err) {
-      console.error('Error updating user:', err);
-  alert(err && err.message ? err.message : 'Error updating user');
+      console.error(err);
+      alert('Error updating user');
     } finally {
       setLoading(false);
     }
