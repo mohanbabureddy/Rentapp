@@ -93,7 +93,7 @@ export default function AdminViewBills() {
     try {
       const res = await fetch(`${API_BASE}/all`);
       if (!res.ok) throw new Error('Failed to fetch bills');
-      setBills(await res.json());
+  setBills(await res.json());
     } catch (err) {
       console.error(err);
       setError('Unable to load bills');
@@ -166,7 +166,7 @@ export default function AdminViewBills() {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.header}>All Tenant Bills</h2>
+  <h2 style={styles.header}>All Tenant Bills</h2>
       {error && <div style={styles.error}>{error}</div>}
       {loading && <div style={styles.loading}>Loading…</div>}
 

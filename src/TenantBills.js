@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { url, FETCH_CREDENTIALS } from './apiClient';
 
 function TenantBills({ username }) {
   const [bills, setBills] = useState([]);
@@ -10,7 +11,7 @@ function TenantBills({ username }) {
   const fetchBills = useCallback(async () => {
     if (!username) return;
     try {
-      const response = await fetch(`http://localhost:8080/api/tenants/${username}`);
+  const response = await fetch(url.tenantBills(username), { credentials: FETCH_CREDENTIALS });
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
       setBills(data);
@@ -49,11 +50,12 @@ function TenantBills({ username }) {
       handler: async (response) => {
         alert(`✅ Payment successful!\nPayment ID: ${response.razorpay_payment_id}`);
         try {
-          await fetch(`http://localhost:8080/api/tenants/markPaid/${bill.id}`, { method: 'PUT' });
-          await fetch('http://localhost:8080/api/tenants/logSuccess', {
+          await fetch(url.markBillPaid(bill.id), { method: 'PUT', credentials: FETCH_CREDENTIALS });
+          await fetch(url.logPaymentSuccess(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tenantName: username, paymentId: response.razorpay_payment_id })
+            body: JSON.stringify({ tenantName: username, paymentId: response.razorpay_payment_id }),
+            credentials: FETCH_CREDENTIALS
           });
           fetchBills();
         } catch (err) {
@@ -69,10 +71,11 @@ function TenantBills({ username }) {
     const rzp = new window.Razorpay(options);
     rzp.on('payment.failed', (resp) => {
       alert(`❌ Payment failed: ${resp.error.description}`);
-      fetch('http://localhost:8080/api/tenants/logFailure', {
+      fetch(url.logPaymentFailure(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(resp.error)
+        body: JSON.stringify(resp.error),
+        credentials: FETCH_CREDENTIALS
       });
       setPayingBillId(null); // Reset if failed
     });

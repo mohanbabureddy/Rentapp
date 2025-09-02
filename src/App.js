@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import TenantBills from './TenantBills';
+import TenantComplaints from './TenantComplaints';
+import TenantOccupants from './TenantOccupants';
 import AdminAddBill from './AdminAddBill';
 import AdminUsers from './AdminUsers';
 import AdminViewBills from './AdminViewBills';
+import AdminPaidBillsReport from './AdminPaidBillsReport';
+import AdminComplaints from './AdminComplaints';
+import AdminOccupants from './AdminOccupants';
 import Login from './Login';
 import Registration from './Registration';
 import ForgotReset from './ForgotReset';
@@ -124,19 +129,31 @@ function App() {
                 <Link to="/admin/add-bill" style={navLinkStyle}>Add Bill</Link>
                 <Link to="/admin/view-bills" style={navLinkStyle}>View Bills</Link>
                 <Link to="/admin/users" style={navLinkStyle}>Manage Users</Link>
+                <Link to="/admin/paid-report" style={navLinkStyle}>Paid Report</Link>
+                <Link to="/admin/complaints" style={navLinkStyle}>Complaints</Link>
+                <Link to="/admin/occupants" style={navLinkStyle}>Occupants</Link>
               </>
             ) : (
-              <Link to="/" style={navLinkStyle}>My Bills</Link>
+              <>
+                <Link to="/" style={navLinkStyle}>My Bills</Link>
+                <Link to="/complaints" style={navLinkStyle}>Complaints</Link>
+                <Link to="/occupants" style={navLinkStyle}>Occupants</Link>
+              </>
             )}
           </nav>
 
           <Routes>
             <Route path="/" element={<TenantBills username={user.username} />} />
+            <Route path="/complaints" element={<TenantComplaints username={user.username} />} />
+            <Route path="/occupants" element={<TenantOccupants username={user.username} />} />
             {user.role === "ADMIN" && (
               <>
                 <Route path="/admin/add-bill" element={<AdminAddBill />} />
                 <Route path="/admin/view-bills" element={<AdminViewBills />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/paid-report" element={<AdminPaidBillsReport />} />
+                <Route path="/admin/complaints" element={<AdminComplaints />} />
+                <Route path="/admin/occupants" element={<AdminOccupants />} />
               </>
             )}
           </Routes>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { url, FETCH_CREDENTIALS } from './apiClient';
 
 function Login({ setUser }) {
   const [username, setUsername] = useState('');
@@ -10,10 +11,12 @@ function Login({ setUser }) {
   const handleLogin = async () => {
     setError('');
     try {
-      const res = await fetch('http://localhost:8080/api/users/login', {
+      const endpoint = url.login();
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
+        credentials: FETCH_CREDENTIALS
       });
       const raw = await res.text();
       let data; try { data = raw ? JSON.parse(raw) : {}; } catch { data = { error: raw }; }
@@ -22,13 +25,19 @@ function Login({ setUser }) {
           setError('Registration incomplete. Click Register.');
           return;
         }
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || `Login failed (HTTP ${res.status})`);
       }
       if (!data.role) data.role = 'TENANT';
       setUser(data);
       localStorage.setItem('user', JSON.stringify(data));
       if (data.role === 'ADMIN') navigate('/admin/view-bills'); else navigate('/');
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      if (e.name === 'TypeError' && e.message === 'Failed to fetch') {
+        setError('Cannot reach server. Ensure backend at REACT_APP_API_BASE is running and CORS/proxy is configured.');
+      } else {
+        setError(e.message || 'Login error');
+      }
+    }
   };
 
   const box = {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const API_BASE = 'http://localhost:8080/api/users';
+import { url, FETCH_CREDENTIALS } from './apiClient';
 
 const ROLES = ['ADMIN', 'TENANT'];
 
@@ -138,7 +137,7 @@ function AdminUsers() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/all`);
+  const res = await fetch(url.adminUsersAll(), { credentials: FETCH_CREDENTIALS });
       if (!res.ok) throw new Error('Failed to fetch users');
       setUsers(await res.json());
     } catch (err) {
@@ -164,17 +163,33 @@ function AdminUsers() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/add`, {
+      const res = await fetch(url.adminUserAdd(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser),
+        credentials: FETCH_CREDENTIALS
       });
-      if (!res.ok) throw new Error('Add failed');
+      if (!res.ok) {
+        // Try to extract backend error message (JSON or text) so duplicate user errors show up.
+        let backendMsg = '';
+        try {
+          const ct = res.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            const data = await res.json();
+            backendMsg = data.message || data.error || JSON.stringify(data);
+          } else {
+            backendMsg = (await res.text()) || res.statusText;
+          }
+        } catch (_) {
+          backendMsg = res.statusText || 'Unknown error';
+        }
+        throw new Error(backendMsg ? `Add failed: ${backendMsg}` : 'Add failed');
+      }
       setNewUser({ username: '', password: '', role: ROLES[0] });
       await fetchUsers();
     } catch (err) {
       console.error(err);
-      alert('Error adding user');
+      alert(err.message || 'Error adding user');
     } finally {
       setLoading(false);
     }
@@ -196,10 +211,11 @@ function AdminUsers() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/update/${editId}`, {
+      const res = await fetch(url.adminUserUpdate(editId), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editUser),
+        credentials: FETCH_CREDENTIALS
       });
       if (!res.ok) throw new Error('Update failed');
       setEditId(null);
@@ -216,7 +232,7 @@ function AdminUsers() {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/delete/${id}`, { method: 'DELETE' });
+  const res = await fetch(url.adminUserDelete(id), { method: 'DELETE', credentials: FETCH_CREDENTIALS });
       if (!res.ok) throw new Error('Delete failed');
       await fetchUsers();
     } catch (err) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-const API = 'http://localhost:8080/api/users';
+import { url, FETCH_CREDENTIALS } from './apiClient';
 
 const AUTO_REDIRECT = true;
 const REDIRECT_DELAY_MS = 2000;
@@ -36,14 +36,15 @@ export default function Registration() {
     if(!form.username||!form.email||!form.mobileNumber){setErr('All fields required');return;}
     setLoading(true);
     try{
-      const res=await fetch(`${API}/registration/start`,{
+      const res=await fetch(url.registrationStart(),{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           username:form.username.trim(),
           email:form.email.trim(),
           mobileNumber:form.mobileNumber.trim()
-        })
+        }),
+        credentials: FETCH_CREDENTIALS
       });
       const data=await res.json().catch(()=>({}));
       if(!res.ok) throw new Error(data.error||'Failed to start');
@@ -59,14 +60,15 @@ export default function Registration() {
     if(form.password!==form.confirmPassword){setErr('Passwords do not match');return;}
     setLoading(true);
     try{
-      const res=await fetch(`${API}/registration/finish`,{
+      const res=await fetch(url.registrationFinish(),{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           username:form.username.trim(),
           otp:form.otp.trim(),
           password:form.password
-        })
+        }),
+        credentials: FETCH_CREDENTIALS
       });
       const data=await res.json().catch(()=>({}));
       if(!res.ok) throw new Error(data.error||'Failed to finish');
