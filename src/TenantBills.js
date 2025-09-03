@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { url, FETCH_CREDENTIALS } from './apiClient';
+import { url, FETCH_CREDENTIALS, userMoveInDepositUrl } from './apiClient';
 
 function TenantBills({ username }) {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [payingBillId, setPayingBillId] = useState(null); // Track which bill is being paid
+  const [moveInInfo, setMoveInInfo] = useState({ moveInDate: null, totalAmountDeposited: 0 });
+  const [infoLoading, setInfoLoading] = useState(false);
   const navigate = useNavigate();
 
   const fetchBills = useCallback(async () => {
@@ -14,7 +16,12 @@ function TenantBills({ username }) {
   const response = await fetch(url.tenantBills(username), { credentials: FETCH_CREDENTIALS });
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
-      setBills(data);
+      // Normalize miscellaneous field naming (miscellaneous | misc | balance | maintenance | otherCharges)
+      const normalized = Array.isArray(data) ? data.map(b => ({
+        ...b,
+        miscellaneous: b.miscellaneous ?? b.misc ?? b.balance ?? b.maintenance ?? b.otherCharges ?? b.otherCharge ?? b.extra ?? 0
+      })) : [];
+      setBills(normalized);
     } catch (error) {
       console.error("Error fetching bills:", error);
     } finally {
@@ -29,6 +36,25 @@ function TenantBills({ username }) {
       return;
     }
     fetchBills();
+    (async () => {
+      setInfoLoading(true);
+      try {
+        const res = await fetch(userMoveInDepositUrl.self(username), { credentials: FETCH_CREDENTIALS });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.error) {
+            setMoveInInfo({
+              moveInDate: data.moveInDate || null,
+              totalAmountDeposited: Number(data.totalAmountDeposited || 0)
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Move-in/deposit load failed', e);
+      } finally {
+        setInfoLoading(false);
+      }
+    })();
   }, [username, fetchBills, navigate]);
 
   const payNow = (bill) => {
@@ -36,17 +62,19 @@ function TenantBills({ username }) {
     if (payingBillId === bill.id) return;
 
     setPayingBillId(bill.id); // Mark this bill as being paid
-    const totalAmount =
-      (Number(bill.rent || 0) +
-        Number(bill.water || 0) +
-        Number(bill.electricity || 0)) * 100;
+    const totalAmount = (
+      Number(bill.rent || 0) +
+      Number(bill.water || 0) +
+      Number(bill.electricity || 0) +
+      Number(bill.miscellaneous || 0)
+    ) * 100; // Razorpay expects amount in paise
 
     const options = {
       key: "rzp_test_83AfjhlCGpYRkn",
       amount: totalAmount,
       currency: "INR",
       name: "Tenant Rent Billing",
-      description: `Payment for ${bill.monthYear}`,
+  description: `Payment for ${bill.monthYear} (incl. misc ${bill.miscellaneous || 0})`,
       handler: async (response) => {
         alert(`✅ Payment successful!\nPayment ID: ${response.razorpay_payment_id}`);
         try {
@@ -109,6 +137,19 @@ function TenantBills({ username }) {
         My Bills
       </h2>
 
+      <div style={{ background:'#fff', padding:'14px 18px', borderRadius:12, boxShadow:'0 2px 6px rgba(0,0,0,0.05)', marginBottom:28, display:'flex', flexWrap:'wrap', gap:32 }}>
+        <div style={{ fontSize:14, color:'#334155' }}>
+          <strong>Move-in Date:</strong>{' '}
+          {moveInInfo.moveInDate ? new Date(moveInInfo.moveInDate).toLocaleDateString() : (
+            infoLoading ? <em style={{ color:'#64748b' }}>Loading…</em> : <em style={{ color:'#64748b' }}>—</em>
+          )}
+        </div>
+        <div style={{ fontSize:14, color:'#334155' }}>
+          <strong>Total Deposit:</strong>{' '}
+          {infoLoading ? '…' : moveInInfo.totalAmountDeposited}
+        </div>
+      </div>
+
       {bills.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#64748b' }}>
           No bills found for <strong>{username}</strong>.
@@ -131,6 +172,7 @@ function TenantBills({ username }) {
               <th style={{ padding: '12px' }}>Rent</th>
               <th style={{ padding: '12px' }}>Water</th>
               <th style={{ padding: '12px' }}>Electricity</th>
+              <th style={{ padding: '12px' }}>Misc</th>
               <th style={{ padding: '12px' }}>Total</th>
               <th style={{ padding: '12px' }}>Status</th>
             </tr>
@@ -148,8 +190,9 @@ function TenantBills({ username }) {
                 <td style={{ padding: '10px', textAlign: 'center' }}>{bill.rent}</td>
                 <td style={{ padding: '10px', textAlign: 'center' }}>{bill.water}</td>
                 <td style={{ padding: '10px', textAlign: 'center' }}>{bill.electricity}</td>
+                <td style={{ padding: '10px', textAlign: 'center' }}>{bill.miscellaneous || 0}</td>
                 <td style={{ padding: '10px', textAlign: 'center' }}>
-                  {Number(bill.rent || 0) + Number(bill.water || 0) + Number(bill.electricity || 0)}
+                  {Number(bill.rent || 0) + Number(bill.water || 0) + Number(bill.electricity || 0) + Number(bill.miscellaneous || 0)}
                 </td>
                 <td style={{ padding: '10px', textAlign: 'center' }}>
                   {bill.paid ? (

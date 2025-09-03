@@ -27,9 +27,10 @@ function Login({ setUser }) {
         }
         throw new Error(data.error || `Login failed (HTTP ${res.status})`);
       }
-      if (!data.role) data.role = 'TENANT';
-      setUser(data);
-      localStorage.setItem('user', JSON.stringify(data));
+  if (!data.role) data.role = 'TENANT';
+  data.lastActivity = Date.now();
+  setUser(data);
+  localStorage.setItem('user', JSON.stringify(data));
       if (data.role === 'ADMIN') navigate('/admin/view-bills'); else navigate('/');
     } catch (e) {
       if (e.name === 'TypeError' && e.message === 'Failed to fetch') {

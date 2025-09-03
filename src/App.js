@@ -13,6 +13,9 @@ import Login from './Login';
 import Registration from './Registration';
 import ForgotReset from './ForgotReset';
 
+// Keep inactivity limit outside component so it's stable and excluded from hook dependency warnings
+const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes
+
 function App() {
   const [user, setUser] = useState(null);
   const timerRef = useRef(null);
@@ -20,8 +23,17 @@ function App() {
   // Load user from localStorage on app start
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    if (!storedUser) return;
+    try {
+      const parsed = JSON.parse(storedUser);
+      // If we have lastActivity and it exceeded limit while app was closed, force logout
+      if (parsed.lastActivity && Date.now() - parsed.lastActivity > INACTIVITY_LIMIT) {
+        localStorage.removeItem('user');
+      } else {
+        setUser(parsed);
+      }
+    } catch {
+      localStorage.removeItem('user');
     }
   }, []);
 
@@ -43,7 +55,16 @@ function App() {
 
     const resetTimer = () => {
       clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(logoutAfterInactivity, 5 * 60 * 1000); // 5 minutes
+      timerRef.current = setTimeout(logoutAfterInactivity, INACTIVITY_LIMIT);
+      // Persist latest activity timestamp so a full page reload / dev server restart can still evaluate expiry
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.lastActivity = Date.now();
+          localStorage.setItem('user', JSON.stringify(parsed));
+        }
+      } catch { /* ignore */ }
     };
 
     // List of events that indicate activity

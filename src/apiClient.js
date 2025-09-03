@@ -3,7 +3,8 @@
 //   REACT_APP_API_BASE   e.g. http://localhost:8080
 //   REACT_APP_API_PREFIX e.g. /api  (set to '' if backend has no /api)
 
-const RAW_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8080';
+// Default backend host changed from localhost to deployed host
+const RAW_BASE = process.env.REACT_APP_API_BASE || 'http://44.204.172.179:8080';
 export const API_BASE = RAW_BASE.replace(/\/$/, '');
 export const API_PREFIX = process.env.REACT_APP_API_PREFIX || '/api';
 // Set REACT_APP_WITH_CREDENTIALS=true to send cookies (session auth) to API on different origin
@@ -18,6 +19,9 @@ export const url = {
   markBillPaid: (billId) => `${API_BASE}${API_PREFIX}/tenants/markPaid/${billId}`,
   logPaymentSuccess: () => `${API_BASE}${API_PREFIX}/tenants/logSuccess`,
   logPaymentFailure: () => `${API_BASE}${API_PREFIX}/tenants/logFailure`,
+  // Security deposit (tenant read, admin manage)
+  securityDepositsList: (tenant) => `${API_BASE}${API_PREFIX}/tenants/securityDeposits/${encodeURIComponent(tenant)}`,
+  securityDepositAdd: (tenant) => `${API_BASE}${API_PREFIX}/tenants/securityDeposits/${encodeURIComponent(tenant)}`,
   complaintsList: (tenant) => `${API_BASE}${API_PREFIX}/tenants/complaints/${encodeURIComponent(tenant)}`,
   complaintsAdd: () => `${API_BASE}${API_PREFIX}/tenants/complaints`,
   adminUsersAll: () => `${API_BASE}${API_PREFIX}/users/all`,
@@ -30,6 +34,12 @@ export const url = {
   login: () => `${API_BASE}${API_PREFIX}/users/login`,
   registrationStart: () => `${API_BASE}${API_PREFIX}/users/registration/start`,
   registrationFinish: () => `${API_BASE}${API_PREFIX}/users/registration/finish`
+};
+
+// Extended user move-in & deposit specific helpers
+export const userMoveInDepositUrl = {
+  self: (username) => `${API_BASE}${API_PREFIX}/users/me/movein-deposit?username=${encodeURIComponent(username)}`,
+  update: (id) => `${API_BASE}${API_PREFIX}/users/${id}/movein-deposit`
 };
 
 // Generic JSON helper

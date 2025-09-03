@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE, API_PREFIX } from './apiClient';
 
 // Helper to get previous, current, and next month in YYYY-MM format
 function getThreeMonths() {
@@ -28,6 +29,7 @@ const AdminAddBill = () => {
     rent: '',
     water: '',
     electricity: '',
+  miscellaneous: '' // optional maintenance / balance / other charges
   });
 
   const [tenants, setTenants] = useState([]);
@@ -35,7 +37,7 @@ const AdminAddBill = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/users/names')
+    fetch(`${API_BASE}${API_PREFIX}/users/names`)
       .then(res => res.json())
       .then(data => setTenants(data))
       .catch(err => console.error('Failed to fetch tenants', err));
@@ -51,7 +53,7 @@ const AdminAddBill = () => {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:8080/api/tenants/addBill', {
+  const res = await fetch(`${API_BASE}${API_PREFIX}/tenants/addBill`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -72,7 +74,8 @@ const AdminAddBill = () => {
         monthYear: recentMonths[1],
         rent: '',
         water: '',
-        electricity: '',
+  electricity: '',
+  miscellaneous: ''
       });
       alert('Bill added and email sent!');
     } catch (err) {
@@ -196,6 +199,20 @@ const AdminAddBill = () => {
           value={formData.electricity}
           onChange={handleChange}
           required
+          style={{
+            width: '100%',
+            padding: '10px',
+            marginBottom: '20px',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            fontSize: '16px',
+          }}
+        />
+        <input
+          name="miscellaneous"
+          placeholder="Miscellaneous / Maintenance (optional)"
+          value={formData.miscellaneous}
+          onChange={handleChange}
           style={{
             width: '100%',
             padding: '10px',

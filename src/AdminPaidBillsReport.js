@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE as BASE_FROM_CLIENT, API_PREFIX } from './apiClient';
 
-const API_BASE = 'http://localhost:8080/api/tenants';
+// Use centralized apiClient base; fallback to provided deployed host if env not set
+const API_BASE = `${BASE_FROM_CLIENT}${API_PREFIX}/tenants`;
 
 const styles = {
   container: {
@@ -64,7 +66,7 @@ export default function AdminPaidBillsReport() {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [totals, setTotals] = useState({ rent: 0, water: 0, electricity: 0 });
+  const [totals, setTotals] = useState({ rent: 0, water: 0, electricity: 0, misc: 0 });
 
   // Auth guard: only ADMIN
   useEffect(() => {
@@ -80,14 +82,20 @@ export default function AdminPaidBillsReport() {
     try {
       const res = await fetch(`${API_BASE}/paid-bills/${month}`);
       if (!res.ok) throw new Error('Fetch failed');
-      const data = await res.json();
-      setBills(data);
-      const agg = data.reduce((acc, b) => {
+      const raw = await res.json();
+      // Normalize miscellaneous under various possible backend keys
+      const normalized = (raw || []).map(b => ({
+        ...b,
+        miscellaneous: b.miscellaneous ?? b.misc ?? b.balance ?? b.maintenance ?? b.otherCharges ?? b.otherCharge ?? b.extra ?? 0
+      }));
+      setBills(normalized);
+      const agg = normalized.reduce((acc, b) => {
         acc.rent += Number(b.rent) || 0;
         acc.water += Number(b.water) || 0;
         acc.electricity += Number(b.electricity) || 0;
+        acc.misc += Number(b.miscellaneous) || 0;
         return acc;
-      }, { rent:0, water:0, electricity:0 });
+      }, { rent:0, water:0, electricity:0, misc:0 });
       setTotals(agg);
     } catch (e) {
       console.error(e);
@@ -122,11 +130,11 @@ export default function AdminPaidBillsReport() {
           <input type="month" value={month} onChange={e=>setMonth(e.target.value)} style={{ ...styles.input, width:170 }} />
         </div>
         <button onClick={fetchReport} disabled={!month || loading} style={{ ...styles.btn, ...styles.btnPrimary }}>Fetch Report</button>
-        <button onClick={() => { setBills([]); setTotals({ rent:0, water:0, electricity:0 }); setMonth(''); }} disabled={loading} style={{ ...styles.btn, ...styles.btnSecondary }}>Clear</button>
+  <button onClick={() => { setBills([]); setTotals({ rent:0, water:0, electricity:0, misc:0 }); setMonth(''); }} disabled={loading} style={{ ...styles.btn, ...styles.btnSecondary }}>Clear</button>
         <button onClick={exportCsv} disabled={!bills.length} style={{ ...styles.btn, background:'#16a34a', color:'#fff' }}>Export CSV</button>
         {bills.length > 0 && (
           <div style={{ fontSize:14, fontWeight:600, color:'#0f172a' }}>
-            Totals ➜ Rent: {totals.rent} | Water: {totals.water} | Electricity: {totals.electricity} | Grand: {totals.rent + totals.water + totals.electricity}
+            Totals ➜ Rent: {totals.rent} | Water: {totals.water} | Electricity: {totals.electricity} | Misc: {totals.misc} | Grand: {totals.rent + totals.water + totals.electricity + totals.misc}
           </div>
         )}
       </div>
@@ -135,15 +143,15 @@ export default function AdminPaidBillsReport() {
         <table style={styles.table}>
           <thead>
             <tr>
-              {['ID','Tenant','Month','Rent','Water','Electricity','Total'].map((h,i)=>(<th key={i} style={styles.th}>{h}</th>))}
+              {['ID','Tenant','Month','Rent','Water','Electricity','Misc','Total'].map((h,i)=>(<th key={i} style={styles.th}>{h}</th>))}
             </tr>
           </thead>
           <tbody>
             {(!bills.length && !loading) && (
-              <tr><td colSpan={7} style={{ ...styles.td, padding:24, fontStyle:'italic', color:'#64748b' }}>No data</td></tr>
+              <tr><td colSpan={8} style={{ ...styles.td, padding:24, fontStyle:'italic', color:'#64748b' }}>No data</td></tr>
             )}
             {bills.map((b, idx) => {
-              const total = (Number(b.rent)||0)+(Number(b.water)||0)+(Number(b.electricity)||0);
+              const total = (Number(b.rent)||0)+(Number(b.water)||0)+(Number(b.electricity)||0)+(Number(b.miscellaneous)||0);
               return (
                 <tr key={b.id} style={{ background: idx % 2 === 0 ? '#f1f5f9' : '#fff', borderBottom:'1px solid #e2e8f0' }}>
                   <td style={styles.td}>{b.id}</td>
@@ -152,6 +160,7 @@ export default function AdminPaidBillsReport() {
                   <td style={styles.td}>{b.rent}</td>
                   <td style={styles.td}>{b.water}</td>
                   <td style={styles.td}>{b.electricity}</td>
+                  <td style={styles.td}>{b.miscellaneous || 0}</td>
                   <td style={styles.td}>{total}</td>
                 </tr>
               );

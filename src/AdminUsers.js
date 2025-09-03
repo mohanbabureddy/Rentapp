@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { url, FETCH_CREDENTIALS } from './apiClient';
+import { url, FETCH_CREDENTIALS, userMoveInDepositUrl } from './apiClient';
 
 const ROLES = ['ADMIN', 'TENANT'];
 
@@ -106,12 +106,12 @@ function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ username: '', password: '', role: ROLES[0] });
   const [editId, setEditId] = useState(null);
-  const [editUser, setEditUser] = useState({ username: '', password: '', role: ROLES[0] });
+  const [editUser, setEditUser] = useState({ username: '', role: ROLES[0], moveInDate: '', totalAmountDeposited: '' });
+  const [updatingMoveIn, setUpdatingMoveIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // only for add user form
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -139,7 +139,8 @@ function AdminUsers() {
     try {
   const res = await fetch(url.adminUsersAll(), { credentials: FETCH_CREDENTIALS });
       if (!res.ok) throw new Error('Failed to fetch users');
-      setUsers(await res.json());
+  const data = await res.json();
+  setUsers(data);
     } catch (err) {
       console.error(err);
       setError('Unable to load users');
@@ -197,8 +198,12 @@ function AdminUsers() {
 
   const handleEdit = user => {
     setEditId(user.id);
-    setEditUser({ username: user.username, password: user.password, role: user.role });
-    setShowEditPassword(false);
+    setEditUser({
+      username: user.username,
+      role: user.role,
+      moveInDate: user.moveInDate || '',
+      totalAmountDeposited: user.totalAmountDeposited || ''
+    });
   };
 
   const handleEditChange = e => {
@@ -206,18 +211,37 @@ function AdminUsers() {
   };
 
   const handleUpdateUser = async () => {
-    if (!editUser.username || !editUser.password || !editUser.role) {
-      return alert('All fields are required to update');
+    if (!editUser.username || !editUser.role) {
+      return alert('Username and Role are required to update');
     }
     setLoading(true);
     try {
+      // Exclude password from update (prevents sending hashed value back & double hashing backend)
+      const { username, role } = editUser;
+      const basePayload = { username, role };
       const res = await fetch(url.adminUserUpdate(editId), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editUser),
+        body: JSON.stringify(basePayload),
         credentials: FETCH_CREDENTIALS
       });
       if (!res.ok) throw new Error('Update failed');
+      // After basic update, optionally update move-in/deposit if provided
+      if (editUser.moveInDate || editUser.totalAmountDeposited) {
+        try {
+          setUpdatingMoveIn(true);
+          await fetch(userMoveInDepositUrl.update(editId), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: FETCH_CREDENTIALS,
+            body: JSON.stringify({
+              ...(editUser.moveInDate ? { moveInDate: editUser.moveInDate } : {}),
+              ...(editUser.totalAmountDeposited ? { totalAmountDeposited: editUser.totalAmountDeposited } : {})
+            })
+          });
+        } catch (e) { console.warn('Move-in/deposit patch failed', e); }
+        finally { setUpdatingMoveIn(false); }
+      }
       setEditId(null);
       await fetchUsers();
     } catch (err) {
@@ -319,8 +343,10 @@ function AdminUsers() {
           <tr>
             <th style={styles.th}>ID</th>
             <th style={{ ...styles.th, ...styles.usernameCol }}>Username</th>
-            <th style={styles.th}>Password</th>
+            {/* Password column removed to avoid editing hashed passwords */}
             <th style={styles.th}>Role</th>
+            <th style={styles.th}>Move-In Date</th>
+            <th style={styles.th}>Total Deposit</th>
             <th style={{ ...styles.th, ...styles.actionsCol }}>Actions</th>
           </tr>
         </thead>
@@ -348,34 +374,7 @@ function AdminUsers() {
                 )}
               </td>
 
-              <td style={styles.td}>
-                {editId === u.id ? (
-                  <>
-                    <input
-                      name="password"
-                      type={showEditPassword ? 'text' : 'password'}
-                      value={editUser.password}
-                      onChange={handleEditChange}
-                      style={styles.input}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowEditPassword(v => !v)}
-                      style={{
-                        ...styles.actionBtn,
-                        background: '#f1f5f9',
-                        color: '#2563eb',
-                        border: '1px solid #2563eb',
-                        marginRight: 0,
-                      }}
-                    >
-                      {showEditPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </>
-                ) : (
-                  '••••••••'
-                )}
-              </td>
+              {/* Password cell removed */}
 
               <td style={styles.td}>
                 {editId === u.id ? (
@@ -393,15 +392,43 @@ function AdminUsers() {
                   u.role
                 )}
               </td>
+              <td style={styles.td}>
+                {editId === u.id ? (
+                  <input
+                    type="date"
+                    name="moveInDate"
+                    value={editUser.moveInDate}
+                    onChange={handleEditChange}
+                    style={styles.input}
+                  />
+                ) : (
+                  u.moveInDate ? new Date(u.moveInDate).toLocaleDateString() : '—'
+                )}
+              </td>
+              <td style={styles.td}>
+                {editId === u.id ? (
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="totalAmountDeposited"
+                    value={editUser.totalAmountDeposited}
+                    onChange={handleEditChange}
+                    style={styles.input}
+                  />
+                ) : (
+                  typeof u.totalAmountDeposited === 'number' ? u.totalAmountDeposited : (u.totalAmountDeposited || 0)
+                )}
+              </td>
 
               <td style={{ ...styles.td, ...styles.actionsCol }}>
                 {editId === u.id ? (
                   <>
                     <button
                       onClick={handleUpdateUser}
-                      style={{ ...styles.actionBtn, background: '#2563eb', color: '#fff' }}
+                      disabled={loading || updatingMoveIn}
+                      style={{ ...styles.actionBtn, background: '#2563eb', color: '#fff', opacity: (loading || updatingMoveIn) ? 0.7 : 1 }}
                     >
-                      Save
+                      {(loading || updatingMoveIn) ? 'Saving…' : 'Save'}
                     </button>
                     <button
                       onClick={() => setEditId(null)}
@@ -411,9 +438,13 @@ function AdminUsers() {
                         color: '#2563eb',
                         border: '1px solid #2563eb',
                       }}
+                      disabled={loading || updatingMoveIn}
                     >
                       Cancel
                     </button>
+                    {updatingMoveIn && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>Updating move-in & deposit…</div>
+                    )}
                   </>
                 ) : (
                   <>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE, API_PREFIX } from './apiClient';
 
-const API = 'http://localhost:8080/api/users';
+const API = `${API_BASE}${API_PREFIX}/users`;
 const AUTO_REDIRECT = true;
 const REDIRECT_DELAY_MS = 2000;
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE as BASE_FROM_CLIENT, API_PREFIX } from './apiClient';
 
-const API_BASE = 'http://localhost:8080/api/tenants';
+const API_BASE = `${BASE_FROM_CLIENT}${API_PREFIX}/tenants`;
 
 const styles = {
   container: {
@@ -73,7 +74,8 @@ export default function AdminViewBills() {
     monthYear: '',
     rent: '',
     water: '',
-    electricity: '',
+  electricity: '',
+  miscellaneous: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -130,6 +132,7 @@ export default function AdminViewBills() {
       rent:       b.rent,
       water:      b.water,
       electricity: b.electricity,
+      miscellaneous: b.miscellaneous || ''
     });
   };
 
@@ -174,7 +177,7 @@ export default function AdminViewBills() {
         <table style={styles.table}>
           <thead>
             <tr>
-              {['ID','Tenant','Year–Month','Rent','Water','Electricity','Paid','Actions'].map((h,i) => (
+              {['ID','Tenant','Year–Month','Rent','Water','Electricity','Misc','Paid','Actions'].map((h,i) => (
                 <th key={i} style={styles.th}>{h}</th>
               ))}
             </tr>
@@ -253,6 +256,19 @@ export default function AdminViewBills() {
                     />
                   ) : (
                     b.electricity
+                  )}
+                </td>
+                <td style={styles.td}>
+                  {editId === b.id ? (
+                    <input
+                      name="miscellaneous"
+                      value={editForm.miscellaneous}
+                      onChange={handleChange}
+                      style={{ ...styles.input, width: 70, fontSize: 14, padding: '4px 6px' }}
+                      maxLength={7}
+                    />
+                  ) : (
+                    b.miscellaneous || '-'
                   )}
                 </td>
 
