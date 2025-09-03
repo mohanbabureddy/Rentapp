@@ -4,7 +4,12 @@
 //   REACT_APP_API_PREFIX e.g. /api  (set to '' if backend has no /api)
 
 // Default backend host changed from localhost to deployed host
-const RAW_BASE = process.env.REACT_APP_API_BASE || 'http://44.204.172.179:8080';
+// API base must be supplied via environment (.env) so there's a single source of truth.
+const RAW_BASE = process.env.REACT_APP_API_BASE;
+if (!RAW_BASE) {
+  // Fail fast: developer must set REACT_APP_API_BASE in .env or build env.
+  throw new Error('REACT_APP_API_BASE not set. Define it in .env before building.');
+}
 export const API_BASE = RAW_BASE.replace(/\/$/, '');
 export const API_PREFIX = process.env.REACT_APP_API_PREFIX || '/api';
 // Set REACT_APP_WITH_CREDENTIALS=true to send cookies (session auth) to API on different origin
