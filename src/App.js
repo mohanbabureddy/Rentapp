@@ -12,6 +12,11 @@ import AdminOccupants from './AdminOccupants';
 import Login from './Login';
 import Registration from './Registration';
 import ForgotReset from './ForgotReset';
+import Terms from './Terms';
+import RefundPolicy from './RefundPolicy';
+
+// App version (exposed via environment variable REACT_APP_VERSION)
+const APP_VERSION = process.env.REACT_APP_VERSION || '0.1.0';
 
 // Keep inactivity limit outside component so it's stable and excluded from hook dependency warnings
 const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes
@@ -90,6 +95,8 @@ function App() {
         <Routes>
           <Route path="/register" element={<Registration />} />
           <Route path="/forgot" element={<ForgotReset />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
           <Route path="*" element={
             <Login setUser={(u)=>{ setUser(u); localStorage.setItem('user',JSON.stringify(u)); }} />
           } />
@@ -167,6 +174,8 @@ function App() {
             <Route path="/" element={<TenantBills username={user.username} />} />
             <Route path="/complaints" element={<TenantComplaints username={user.username} />} />
             <Route path="/occupants" element={<TenantOccupants username={user.username} />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/refund-policy" element={<RefundPolicy />} />
             {user.role === "ADMIN" && (
               <>
                 <Route path="/admin/add-bill" element={<AdminAddBill />} />
@@ -178,6 +187,11 @@ function App() {
               </>
             )}
           </Routes>
+          <div style={{marginTop:48,fontSize:12,textAlign:'center',color:'#64748b'}}>
+            <Link to="/terms" style={{color:'#2563eb',marginRight:16}}>Terms & Conditions</Link>
+            <Link to="/refund-policy" style={{color:'#2563eb',marginRight:16}}>Cancellation & Refund Policy</Link>
+            <span style={{opacity:0.8}}>Version {APP_VERSION}</span>
+          </div>
         </div>
       )}
     </Router>

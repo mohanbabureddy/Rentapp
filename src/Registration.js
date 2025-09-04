@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { url, FETCH_CREDENTIALS } from './apiClient';
 
 const AUTO_REDIRECT = true;
@@ -17,6 +17,7 @@ export default function Registration() {
     password: '',
     confirmPassword: ''
   });
+  const [accepted,setAccepted]=useState(false);
   const [loading,setLoading]=useState(false);
   const [msg,setMsg]=useState('');
   const [err,setErr]=useState('');
@@ -33,7 +34,8 @@ export default function Registration() {
   const start = async (e)=>{
     e.preventDefault();
     setErr(''); setMsg('');
-    if(!form.username||!form.email||!form.mobileNumber){setErr('All fields required');return;}
+  if(!form.username||!form.email||!form.mobileNumber){setErr('All fields required');return;}
+  if(!accepted){setErr('You must accept Terms & Refund Policy');return;}
     setLoading(true);
     try{
       const res=await fetch(url.registrationStart(),{
@@ -113,6 +115,10 @@ export default function Registration() {
                  value={form.email} onChange={onChange} style={inputStyle}/>
           <input name="mobileNumber" placeholder="Mobile (+91XXXXXXXXXX)"
                  value={form.mobileNumber} onChange={onChange} style={inputStyle}/>
+          <label style={{display:'flex',alignItems:'flex-start',fontSize:12,lineHeight:1.4,color:'#334155',marginBottom:14}}>
+            <input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)} style={{marginRight:8,marginTop:2}} />
+            <span>I agree to the <Link to="/terms" style={{color:'#2563eb',fontWeight:600}}>Terms & Conditions</Link> and the <Link to="/refund-policy" style={{color:'#2563eb',fontWeight:600}}>Cancellation & Refund Policy</Link>.</span>
+          </label>
           <button type="submit" disabled={loading} style={btnStyle}>
             {loading?'Submitting...':'Send OTP'}
           </button>
@@ -142,6 +148,9 @@ export default function Registration() {
           {AUTO_REDIRECT && <div style={{marginTop:12,fontSize:12,color:'#475569'}}>
             Redirecting automatically...
           </div>}
+          <div style={{marginTop:20,fontSize:12,color:'#64748b'}}>
+            Need to review? <Link to="/terms" style={{color:'#2563eb'}}>Terms</Link> | <Link to="/refund-policy" style={{color:'#2563eb'}}>Refund Policy</Link>
+          </div>
         </div>
       )}
     </div>
