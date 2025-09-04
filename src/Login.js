@@ -33,10 +33,16 @@ function Login({ setUser }) {
   localStorage.setItem('user', JSON.stringify(data));
       if (data.role === 'ADMIN') navigate('/admin/view-bills'); else navigate('/');
     } catch (e) {
-      if (e.name === 'TypeError' && e.message === 'Failed to fetch') {
-        setError('Cannot reach server. Ensure backend at REACT_APP_API_BASE is running and CORS/proxy is configured.');
+      // Hide detailed network/backend errors from end users; show generic message.
+      if (e.name === 'TypeError' && (e.message === 'Failed to fetch' || e.message === 'NetworkError when attempting to fetch resource.')) {
+        setError('Server error');
       } else {
-        setError(e.message || 'Login error');
+        // Keep specific UX for incomplete registration, else generic fallback (avoid leaking backend stack/messages)
+        if ((e.message || '').toLowerCase().includes('registration incomplete')) {
+          setError('Registration incomplete. Click Register.');
+        } else {
+          setError('Server error');
+        }
       }
     }
   };

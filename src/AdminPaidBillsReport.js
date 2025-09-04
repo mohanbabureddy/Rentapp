@@ -105,10 +105,15 @@ export default function AdminPaidBillsReport() {
 
   const exportCsv = () => {
     if (!bills.length) return alert('No data to export');
-    const header = ['ID','Tenant','Month','Rent','Water','Electricity','Total'];
-    const rows = bills.map(b => [b.id, b.tenantName, b.monthYear, b.rent, b.water, b.electricity, (Number(b.rent)||0)+(Number(b.water)||0)+(Number(b.electricity)||0)]);
-    const footer = ['', '', 'Totals', totals.rent, totals.water, totals.electricity, totals.rent + totals.water + totals.electricity];
-    const csv = [header, ...rows, footer].map(r => r.join(',')).join('\n');
+    const header = ['ID','Tenant','Month','Rent','Water','Electricity','Misc','Total'];
+    const rows = bills.map(b => {
+      const misc = Number(b.miscellaneous)||0;
+      const total = (Number(b.rent)||0)+(Number(b.water)||0)+(Number(b.electricity)||0)+misc;
+      return [b.id, b.tenantName, b.monthYear, b.rent, b.water, b.electricity, misc, total];
+    });
+    const grand = totals.rent + totals.water + totals.electricity + totals.misc;
+    const footer = ['', '', 'Totals', totals.rent, totals.water, totals.electricity, totals.misc, grand];
+    const csv = [header, ...rows, footer].map(r => r.map(v => `${v}`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
